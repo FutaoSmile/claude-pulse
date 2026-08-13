@@ -249,11 +249,16 @@ private struct SessionRow: View {
                     .frame(width: 38, height: 38)
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(session.projectName)
+                        Text(session.displayTitle)
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
                             .foregroundStyle(Palette.ink)
                             .lineLimit(1)
                         HStack(spacing: 6) {
+                            if session.conversationTitle != nil {
+                                Text(session.projectName)
+                                    .foregroundStyle(Palette.secondary)
+                                Text("·")
+                            }
                             Text(session.state.title).foregroundStyle(session.state.color)
                             if session.state != .waiting {
                                 Text("·")
@@ -264,6 +269,7 @@ private struct SessionRow: View {
                         }
                         .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundStyle(Palette.secondary)
+                        .lineLimit(1)
                     }
 
                     Spacer(minLength: 4)

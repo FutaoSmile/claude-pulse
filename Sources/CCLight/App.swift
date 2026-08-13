@@ -169,6 +169,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Task { @MainActor in
                 self?.store.consume(event)
                 self?.resizePanel()
+                self?.scheduleTitleRefresh(for: event)
             }
         }
         do {
@@ -180,6 +181,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             alert.informativeText = "本地事件通道创建失败：\(error.localizedDescription)"
             alert.runModal()
             NSApplication.shared.terminate(nil)
+        }
+    }
+
+    private func scheduleTitleRefresh(for event: HookEvent) {
+        let titleEvents = ["SessionStart", "UserPromptSubmit", "Stop", "Notification"]
+        guard titleEvents.contains(event.eventName) else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            guard
+                let self,
+                let session = self.store.session(withID: event.sessionID)
+            else { return }
+            let title = SessionNavigator.conversationTitle(for: session)
+            self.store.updateConversationTitle(title, for: event.sessionID)
         }
     }
 

@@ -128,6 +128,7 @@ struct ClaudeSession: Identifiable, Equatable {
     var terminalSessionID: String?
     var terminalBundleID: String?
     var tmuxPane: String?
+    var conversationTitle: String?
 
     var projectName: String {
         guard !cwd.isEmpty else { return "Claude Code" }
@@ -148,6 +149,10 @@ struct ClaudeSession: Identifiable, Equatable {
 
     var supportsPreciseTerminalFocus: Bool {
         iTermSessionID != nil
+    }
+
+    var displayTitle: String {
+        conversationTitle ?? projectName
     }
 }
 
@@ -204,9 +209,19 @@ final class SessionStore: ObservableObject {
                 terminalProgram: event.terminalProgram,
                 terminalSessionID: event.terminalSessionID,
                 terminalBundleID: event.terminalBundleID,
-                tmuxPane: event.tmuxPane
+                tmuxPane: event.tmuxPane,
+                conversationTitle: nil
             ))
         }
+    }
+
+    func session(withID id: String) -> ClaudeSession? {
+        sessions.first { $0.id == id }
+    }
+
+    func updateConversationTitle(_ title: String?, for id: String) {
+        guard let index = sessions.firstIndex(where: { $0.id == id }) else { return }
+        sessions[index].conversationTitle = title
     }
 
     func remove(_ id: String) {

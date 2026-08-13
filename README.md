@@ -7,9 +7,11 @@ Claude Pulse 是一个常驻 macOS 屏幕边缘的 Claude Code 多会话状态�
 ## 功能
 
 - 同时查看多个 Claude Code 会话
+- 在 iTerm2 中显示 Claude Code 当前对话标题和项目名
+- 点击会话可切回对应的 iTerm2 标签页，右键可打开或复制工作目录
 - 胶囊与完整面板两种显示形态
-- 单击胶囊展开，按住胶囊或标题栏拖动位置
-- 需要回复、授权或处理错误时自动展开
+- 仅点击胶囊右侧下拉按钮展开，拖动胶囊其他区域可移动位置
+- 状态事件只更新胶囊，不会自动展开面板
 - 官方 Claude 品牌图标与原生 SwiftUI 动画
 - 支持所有桌面空间和全屏应用
 - 完全本地运行，通过 Unix Domain Socket 接收事件
@@ -47,7 +49,9 @@ chmod +x scripts/install-hooks.sh scripts/uninstall-hooks.sh
 4. 以非破坏方式将所需 Hooks 合并到 `~/.claude/settings.json`。
 5. 启动 Claude Pulse。
 
-已有 Claude Code 会话会在下一次触发 Hook 时自动出现，无需重启会话。
+重新安装或修复 Hooks 后，请重新启动已打开的 Claude Code 会话。之后的会话会在触发 Hook 时自动出现。
+
+首次点击会话切回 iTerm2 时，macOS 可能会询问是否允许 Claude Pulse 控制 iTerm2。允许后即可精确切换到对应标签页；无法读取终端标题时，列表会回退显示项目目录名。
 
 ## 本地演示
 
