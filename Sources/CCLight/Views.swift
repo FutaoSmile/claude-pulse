@@ -30,7 +30,6 @@ struct FloatingLightView: View {
             }
         }
         .background(Color.clear)
-        .animation(.spring(response: 0.30, dampingFraction: 0.85), value: store.sessions)
     }
 
     private var capsule: some View {

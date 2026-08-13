@@ -154,7 +154,11 @@ struct ClaudeSession: Identifiable, Equatable {
 @MainActor
 final class SessionStore: ObservableObject {
     @Published private(set) var sessions: [ClaudeSession] = []
-    @Published var isExpanded = false
+    @Published private(set) var isExpanded = false
+
+    func setExpandedByUser(_ expanded: Bool) {
+        isExpanded = expanded
+    }
 
     var dominantState: SessionState {
         sessions.max(by: { $0.state.priority < $1.state.priority })?.state ?? .idle

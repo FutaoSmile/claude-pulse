@@ -257,7 +257,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         let screenPoint = preferredToggleAnchor ?? currentScreenPoint
 
-        store.isExpanded = expanded
+        store.setExpandedByUser(expanded)
         resizePanel()
         alignControlAnchor(role: targetRole, to: screenPoint, attemptsRemaining: 3)
     }
