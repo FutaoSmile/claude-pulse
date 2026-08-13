@@ -22,19 +22,15 @@ struct FloatingLightView: View {
     var body: some View {
         Group {
             if store.isExpanded {
-                SessionPanel(store: store) { store.isExpanded = false }
-                    .transition(.opacity)
+                SessionPanel(store: store) { requestExpanded(false) }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 capsule
-                    .transition(.opacity)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .background(Color.clear)
-        .animation(.spring(response: 0.34, dampingFraction: 0.84), value: store.isExpanded)
         .animation(.spring(response: 0.30, dampingFraction: 0.85), value: store.sessions)
-        .onChange(of: store.isExpanded) { _, _ in postLayoutChanged() }
     }
 
     private var capsule: some View {
@@ -69,7 +65,7 @@ struct FloatingLightView: View {
             .accessibilityLabel("Claude Pulse 状态，拖动可移动位置")
 
             Button {
-                store.isExpanded = true
+                requestExpanded(true)
             } label: {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 8, weight: .bold))
@@ -79,6 +75,7 @@ struct FloatingLightView: View {
                         Palette.control.opacity(hoveringDisclosure ? 1 : 0.72),
                         in: Circle()
                     )
+                    .background(ControlAnchorReader(role: .capsuleDisclosure))
             }
             .buttonStyle(.plain)
             .padding(.trailing, 8)
@@ -183,10 +180,11 @@ private struct SessionPanel: View {
                 StatusLegend(close: { showsLegend = false })
                     .frame(width: 310)
             }
-            headerButton("chevron.up", help: "收起为状态胶囊", action: collapse)
             headerButton("power", help: "退出 Claude Pulse（不会关闭 Claude Code）") {
                 NSApplication.shared.terminate(nil)
             }
+            headerButton("chevron.up", help: "收起为状态胶囊", action: collapse)
+                .background(ControlAnchorReader(role: .panelCollapse))
         }
         .padding(.horizontal, 17)
         .padding(.top, 16)
@@ -414,12 +412,46 @@ private struct BrandIcon: View {
     }
 }
 
-extension Notification.Name {
-    static let ccLightLayoutChanged = Notification.Name("app.cclight.layoutChanged")
+enum ControlAnchorRole: String {
+    case capsuleDisclosure
+    case panelCollapse
 }
 
-private func postLayoutChanged() {
-    NotificationCenter.default.post(name: .ccLightLayoutChanged, object: nil)
+extension Notification.Name {
+    static let ccLightExpansionRequested = Notification.Name("app.cclight.expansionRequested")
+}
+
+private func requestExpanded(_ expanded: Bool) {
+    NotificationCenter.default.post(
+        name: .ccLightExpansionRequested,
+        object: nil,
+        userInfo: ["expanded": expanded]
+    )
+}
+
+private struct ControlAnchorReader: NSViewRepresentable {
+    let role: ControlAnchorRole
+
+    func makeNSView(context: Context) -> ControlAnchorView {
+        ControlAnchorView(role: role)
+    }
+
+    func updateNSView(_ nsView: ControlAnchorView, context: Context) {
+        nsView.role = role
+    }
+}
+
+final class ControlAnchorView: NSView {
+    var role: ControlAnchorRole
+
+    init(role: ControlAnchorRole) {
+        self.role = role
+        super.init(frame: .zero)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
 }
 
 private struct WindowDragSurface: NSViewRepresentable {

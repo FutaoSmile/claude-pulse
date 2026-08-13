@@ -121,7 +121,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var panel: NSPanel?
     private var timer: Timer?
     private var didLaunch = false
-    private var layoutObserver: NSObjectProtocol?
+    private var expansionObserver: NSObjectProtocol?
+    private var preferredToggleAnchor: NSPoint?
+    private var lastAlignedFrame: NSRect?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         launch()
@@ -132,12 +134,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         didLaunch = true
         createPanel()
         startServer()
-        layoutObserver = NotificationCenter.default.addObserver(
-            forName: .ccLightLayoutChanged,
+        expansionObserver = NotificationCenter.default.addObserver(
+            forName: .ccLightExpansionRequested,
             object: nil,
             queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in self?.resizePanel() }
+        ) { [weak self] notification in
+            guard let expanded = notification.userInfo?["expanded"] as? Bool else { return }
+            Task { @MainActor in self?.setExpanded(expanded) }
         }
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.store.expireStaleSessions() }
@@ -146,7 +149,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         server?.stop()
-        if let layoutObserver { NotificationCenter.default.removeObserver(layoutObserver) }
+        if let expansionObserver { NotificationCenter.default.removeObserver(expansionObserver) }
     }
 
     private func startServer() {
@@ -212,9 +215,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func resizePanel() {
         guard let panel else { return }
-        // Both shapes share one stable center. Anchoring to the top-right made every
-        // collapse look like the component moved right, and animated intermediate
-        // frames could accumulate that offset during rapid toggles.
         let center = NSPoint(x: panel.frame.midX, y: panel.frame.midY)
         let size = panelSize()
         panel.styleMask = [.borderless]
@@ -227,6 +227,79 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         frame = constrainedToVisibleScreen(frame, preferredScreen: panel.screen)
         panel.setFrame(frame, display: true, animate: false)
+    }
+
+    private func setExpanded(_ expanded: Bool) {
+        guard let panel, store.isExpanded != expanded else { return }
+        let sourceRole: ControlAnchorRole = expanded ? .capsuleDisclosure : .panelCollapse
+        let targetRole: ControlAnchorRole = expanded ? .panelCollapse : .capsuleDisclosure
+        let currentScreenPoint = controlAnchorScreenPoint(role: sourceRole) ?? NSEvent.mouseLocation
+        // AppKit can round a borderless window by one pixel after layout. Treat only
+        // a real pointer move as a new user-selected anchor so rounding never builds
+        // into cumulative drift across repeated toggles.
+        let windowWasMoved = lastAlignedFrame.map {
+            hypot($0.origin.x - panel.frame.origin.x, $0.origin.y - panel.frame.origin.y) > 3
+        } ?? true
+        if preferredToggleAnchor == nil || windowWasMoved {
+            preferredToggleAnchor = currentScreenPoint
+        }
+        let screenPoint = preferredToggleAnchor ?? currentScreenPoint
+
+        store.isExpanded = expanded
+        resizePanel()
+        alignControlAnchor(role: targetRole, to: screenPoint, attemptsRemaining: 3)
+    }
+
+    private func alignControlAnchor(
+        role: ControlAnchorRole,
+        to screenPoint: NSPoint,
+        attemptsRemaining: Int
+    ) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let panel = self.panel else { return }
+            panel.contentView?.layoutSubtreeIfNeeded()
+            guard let currentScreenPoint = self.controlAnchorScreenPoint(role: role) else {
+                if attemptsRemaining > 0 {
+                    self.alignControlAnchor(
+                        role: role,
+                        to: screenPoint,
+                        attemptsRemaining: attemptsRemaining - 1
+                    )
+                }
+                return
+            }
+
+            var frame = panel.frame.offsetBy(
+                dx: screenPoint.x - currentScreenPoint.x,
+                dy: screenPoint.y - currentScreenPoint.y
+            )
+            frame = self.constrainedToVisibleScreen(frame, preferredScreen: panel.screen)
+            panel.setFrame(frame, display: true, animate: false)
+            self.lastAlignedFrame = frame
+        }
+    }
+
+    private func controlAnchorScreenPoint(role: ControlAnchorRole) -> NSPoint? {
+        guard
+            let panel,
+            let contentView = panel.contentView,
+            let anchorView = findControlAnchor(in: contentView, role: role)
+        else { return nil }
+        let localCenter = NSPoint(x: anchorView.bounds.midX, y: anchorView.bounds.midY)
+        let windowPoint = anchorView.convert(localCenter, to: nil)
+        return panel.convertPoint(toScreen: windowPoint)
+    }
+
+    private func findControlAnchor(in view: NSView, role: ControlAnchorRole) -> ControlAnchorView? {
+        if let anchor = view as? ControlAnchorView, anchor.role == role {
+            return anchor
+        }
+        for subview in view.subviews {
+            if let anchor = findControlAnchor(in: subview, role: role) {
+                return anchor
+            }
+        }
+        return nil
     }
 
     private func panelSize() -> NSSize {
