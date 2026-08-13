@@ -3,27 +3,65 @@ import Foundation
 
 @MainActor
 enum SessionNavigator {
-    static func conversationTitle(for session: ClaudeSession) -> String? {
-        guard let sessionID = session.iTermSessionID else { return nil }
-        let escapedID = appleScriptString(sessionID)
+    struct ConversationTitleLookup {
+        let title: String?
+    }
+
+    static func conversationTitle(for session: ClaudeSession) -> ConversationTitleLookup? {
+        conversationTitles(for: [session])[session.id]
+    }
+
+    static func conversationTitles(
+        for sessions: [ClaudeSession]
+    ) -> [String: ConversationTitleLookup] {
+        let sessionsByTerminalID = Dictionary(
+            grouping: sessions.compactMap { session in
+                session.iTermSessionID.map { ($0, session.id) }
+            },
+            by: \.0
+        )
+        guard !sessionsByTerminalID.isEmpty else { return [:] }
+
+        let targetIDs = sessionsByTerminalID.keys
+            .map { "\"\(appleScriptString($0))\"" }
+            .joined(separator: ", ")
         let source = """
+        set targetIDs to {\(targetIDs)}
+        set matches to {}
         tell application id "com.googlecode.iterm2"
             repeat with aWindow in windows
                 repeat with aTab in tabs of aWindow
                     repeat with aSession in sessions of aTab
-                        if id of aSession is "\(escapedID)" then return name of aSession
+                        set terminalID to id of aSession
+                        if targetIDs contains terminalID then
+                            set end of matches to {terminalID, name of aSession}
+                        end if
                     end repeat
                 end repeat
             end repeat
         end tell
-        return missing value
+        return matches
         """
         var error: NSDictionary?
-        guard
-            let value = NSAppleScript(source: source)?.executeAndReturnError(&error).stringValue,
-            error == nil
-        else { return nil }
-        return cleanConversationTitle(value)
+        guard let result = NSAppleScript(source: source)?.executeAndReturnError(&error), error == nil else {
+            return [:]
+        }
+
+        var lookups: [String: ConversationTitleLookup] = [:]
+        guard result.numberOfItems > 0 else { return lookups }
+        for index in 1...result.numberOfItems {
+            guard
+                let match = result.atIndex(index),
+                let terminalID = match.atIndex(1)?.stringValue,
+                let rawTitle = match.atIndex(2)?.stringValue,
+                let linkedSessions = sessionsByTerminalID[terminalID]
+            else { continue }
+            let lookup = ConversationTitleLookup(title: cleanConversationTitle(rawTitle))
+            for linkedSession in linkedSessions {
+                lookups[linkedSession.1] = lookup
+            }
+        }
+        return lookups
     }
 
     static func open(_ session: ClaudeSession) {

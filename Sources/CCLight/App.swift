@@ -132,6 +132,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var server: SocketServer?
     private var panel: NSPanel?
     private var timer: Timer?
+    private var titleRefreshTimer: Timer?
     private var didLaunch = false
     private var expansionObserver: NSObjectProtocol?
     private var preferredToggleAnchor: NSPoint?
@@ -157,10 +158,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.store.expireStaleSessions() }
         }
+        titleRefreshTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.refreshAllConversationTitles() }
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         server?.stop()
+        timer?.invalidate()
+        titleRefreshTimer?.invalidate()
         if let expansionObserver { NotificationCenter.default.removeObserver(expansionObserver) }
     }
 
@@ -187,14 +193,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func scheduleTitleRefresh(for event: HookEvent) {
         let titleEvents = ["SessionStart", "UserPromptSubmit", "Stop", "Notification"]
         guard titleEvents.contains(event.eventName) else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
-            guard
-                let self,
-                let session = self.store.session(withID: event.sessionID)
-            else { return }
-            let title = SessionNavigator.conversationTitle(for: session)
-            self.store.updateConversationTitle(title, for: event.sessionID)
+        for delay in [0.2, 1.0, 2.5, 5.0] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                self?.refreshConversationTitle(for: event.sessionID)
+            }
         }
+    }
+
+    private func refreshAllConversationTitles() {
+        let sessions = store.sessions.filter(\.supportsPreciseTerminalFocus)
+        let lookups = SessionNavigator.conversationTitles(for: sessions)
+        for session in sessions {
+            guard let lookup = lookups[session.id] else { continue }
+            store.updateConversationTitle(lookup.title, for: session.id)
+        }
+    }
+
+    private func refreshConversationTitle(for sessionID: String) {
+        guard
+            let session = store.session(withID: sessionID),
+            let lookup = SessionNavigator.conversationTitle(for: session)
+        else { return }
+        store.updateConversationTitle(lookup.title, for: sessionID)
     }
 
     private func createPanel() {
