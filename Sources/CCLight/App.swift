@@ -82,8 +82,20 @@ struct CCLightMain {
         let data = FileHandle.standardInput.readDataToEndOfFile()
         guard !data.isEmpty else { exit(0) }
         do {
-            _ = try JSONDecoder().decode(HookEvent.self, from: data)
-            try SocketTransport.emit(data)
+            guard var payload = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                return
+            }
+            let environment = ProcessInfo.processInfo.environment
+            payload["_claude_pulse_terminal_program"] = environment["TERM_PROGRAM"]
+                ?? environment["LC_TERMINAL"]
+            payload["_claude_pulse_terminal_session_id"] = environment["ITERM_SESSION_ID"]
+                ?? environment["TERM_SESSION_ID"]
+            payload["_claude_pulse_terminal_bundle_id"] = environment["__CFBundleIdentifier"]
+            payload["_claude_pulse_tmux_pane"] = environment["TMUX_PANE"]
+
+            let enrichedData = try JSONSerialization.data(withJSONObject: payload)
+            _ = try JSONDecoder().decode(HookEvent.self, from: enrichedData)
+            try SocketTransport.emit(enrichedData)
         } catch {
             // Hooks must never interrupt Claude Code. A missing app is intentionally silent.
         }

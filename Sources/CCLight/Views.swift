@@ -237,33 +237,46 @@ private struct SessionRow: View {
     @State private var hovering = false
 
     var body: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 11, style: .continuous)
-                    .fill(session.state.color.opacity(0.13))
-                StatusGlyph(state: session.state, size: 24)
-            }
-            .frame(width: 38, height: 38)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(session.projectName)
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Palette.ink)
-                    .lineLimit(1)
-                HStack(spacing: 6) {
-                    Text(session.state.title).foregroundStyle(session.state.color)
-                    if session.state != .waiting {
-                        Text("·")
-                        TimelineView(.periodic(from: .now, by: 1)) { _ in
-                            Text(session.lastUpdated, style: .relative)
-                        }
+        HStack(spacing: 5) {
+            Button {
+                SessionNavigator.open(session)
+            } label: {
+                HStack(spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 11, style: .continuous)
+                            .fill(session.state.color.opacity(0.13))
+                        StatusGlyph(state: session.state, size: 24)
                     }
-                }
-                .font(.system(size: 11, weight: .medium, design: .rounded))
-                .foregroundStyle(Palette.secondary)
-            }
+                    .frame(width: 38, height: 38)
 
-            Spacer(minLength: 4)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(session.projectName)
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(Palette.ink)
+                            .lineLimit(1)
+                        HStack(spacing: 6) {
+                            Text(session.state.title).foregroundStyle(session.state.color)
+                            if session.state != .waiting {
+                                Text("·")
+                                TimelineView(.periodic(from: .now, by: 1)) { _ in
+                                    Text(session.lastUpdated, style: .relative)
+                                }
+                            }
+                        }
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundStyle(Palette.secondary)
+                    }
+
+                    Spacer(minLength: 4)
+                    Image(systemName: session.supportsPreciseTerminalFocus ? "arrow.up.forward.app" : "folder")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Palette.brandInk)
+                        .opacity(hovering ? 1 : 0)
+                }
+            }
+            .buttonStyle(.plain)
+            .help(session.supportsPreciseTerminalFocus ? "切回对应的 iTerm2 会话" : "打开工作目录")
+
             if hovering {
                 Button(action: dismiss) {
                     Image(systemName: "xmark")
@@ -276,7 +289,7 @@ private struct SessionRow: View {
                 .help("从面板隐藏此会话（不会结束 Claude Code；有新活动时会再次出现）")
                 .accessibilityLabel("从面板隐藏会话，不结束 Claude Code")
                 .transition(.opacity.combined(with: .scale))
-            } else {
+            } else if !session.supportsPreciseTerminalFocus {
                 Circle()
                     .fill(session.state.color)
                     .frame(width: 7, height: 7)
@@ -296,6 +309,17 @@ private struct SessionRow: View {
             withAnimation(.easeOut(duration: 0.15)) { hovering = value }
         }
         .help(session.abbreviatedPath)
+        .contextMenu {
+            if session.supportsPreciseTerminalFocus {
+                Button("切回 iTerm2 会话") { SessionNavigator.focusTerminal(session) }
+            }
+            Button("打开工作目录") { SessionNavigator.openWorkingDirectory(session) }
+            Button("复制工作目录路径") { SessionNavigator.copyWorkingDirectory(session) }
+            if session.transcriptPath != nil {
+                Divider()
+                Button("显示会话记录文件") { SessionNavigator.revealTranscript(session) }
+            }
+        }
     }
 }
 

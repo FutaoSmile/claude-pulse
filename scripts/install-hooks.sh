@@ -30,6 +30,7 @@ chmod +x "$MACOS_DIR/cc-light" "$HOOK_BIN"
 /usr/libexec/PlistBuddy -c "Add :CFBundlePackageType string APPL" "$CONTENTS_DIR/Info.plist"
 /usr/libexec/PlistBuddy -c "Add :LSUIElement bool true" "$CONTENTS_DIR/Info.plist"
 /usr/libexec/PlistBuddy -c "Add :NSHighResolutionCapable bool true" "$CONTENTS_DIR/Info.plist"
+/usr/libexec/PlistBuddy -c "Add :NSAppleEventsUsageDescription string 用于在你点击会话时切回对应的终端窗口。" "$CONTENTS_DIR/Info.plist"
 
 HOOK_BIN_ESCAPED="${HOOK_BIN//\//\\/}"
 /usr/bin/python3 - "$SETTINGS_FILE" "$HOOK_BIN" <<'PY'

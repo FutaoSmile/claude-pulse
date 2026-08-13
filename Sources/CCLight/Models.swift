@@ -66,6 +66,10 @@ struct HookEvent: Codable {
     let notificationType: String?
     let message: String?
     let transcriptPath: String?
+    let terminalProgram: String?
+    let terminalSessionID: String?
+    let terminalBundleID: String?
+    let tmuxPane: String?
     let receivedAt: Date
 
     enum CodingKeys: String, CodingKey {
@@ -75,6 +79,10 @@ struct HookEvent: Codable {
         case notificationType = "notification_type"
         case message
         case transcriptPath = "transcript_path"
+        case terminalProgram = "_claude_pulse_terminal_program"
+        case terminalSessionID = "_claude_pulse_terminal_session_id"
+        case terminalBundleID = "_claude_pulse_terminal_bundle_id"
+        case tmuxPane = "_claude_pulse_tmux_pane"
         case receivedAt
     }
 
@@ -86,6 +94,10 @@ struct HookEvent: Codable {
         notificationType = try values.decodeIfPresent(String.self, forKey: .notificationType)
         message = try values.decodeIfPresent(String.self, forKey: .message)
         transcriptPath = try values.decodeIfPresent(String.self, forKey: .transcriptPath)
+        terminalProgram = try values.decodeIfPresent(String.self, forKey: .terminalProgram)
+        terminalSessionID = try values.decodeIfPresent(String.self, forKey: .terminalSessionID)
+        terminalBundleID = try values.decodeIfPresent(String.self, forKey: .terminalBundleID)
+        tmuxPane = try values.decodeIfPresent(String.self, forKey: .tmuxPane)
         receivedAt = try values.decodeIfPresent(Date.self, forKey: .receivedAt) ?? Date()
     }
 
@@ -97,6 +109,10 @@ struct HookEvent: Codable {
         try values.encodeIfPresent(notificationType, forKey: .notificationType)
         try values.encodeIfPresent(message, forKey: .message)
         try values.encodeIfPresent(transcriptPath, forKey: .transcriptPath)
+        try values.encodeIfPresent(terminalProgram, forKey: .terminalProgram)
+        try values.encodeIfPresent(terminalSessionID, forKey: .terminalSessionID)
+        try values.encodeIfPresent(terminalBundleID, forKey: .terminalBundleID)
+        try values.encodeIfPresent(tmuxPane, forKey: .tmuxPane)
         try values.encode(receivedAt, forKey: .receivedAt)
     }
 }
@@ -108,6 +124,10 @@ struct ClaudeSession: Identifiable, Equatable {
     var detail: String?
     var lastUpdated: Date
     var transcriptPath: String?
+    var terminalProgram: String?
+    var terminalSessionID: String?
+    var terminalBundleID: String?
+    var tmuxPane: String?
 
     var projectName: String {
         guard !cwd.isEmpty else { return "Claude Code" }
@@ -116,6 +136,18 @@ struct ClaudeSession: Identifiable, Equatable {
 
     var abbreviatedPath: String {
         (cwd as NSString).abbreviatingWithTildeInPath
+    }
+
+    var iTermSessionID: String? {
+        guard terminalProgram == "iTerm.app" || terminalBundleID == "com.googlecode.iterm2" else {
+            return nil
+        }
+        guard let terminalSessionID, !terminalSessionID.isEmpty else { return nil }
+        return terminalSessionID.split(separator: ":").last.map(String.init)
+    }
+
+    var supportsPreciseTerminalFocus: Bool {
+        iTermSessionID != nil
     }
 }
 
@@ -153,6 +185,10 @@ final class SessionStore: ObservableObject {
             sessions[index].detail = detail
             sessions[index].lastUpdated = event.receivedAt
             sessions[index].transcriptPath = event.transcriptPath ?? sessions[index].transcriptPath
+            sessions[index].terminalProgram = event.terminalProgram ?? sessions[index].terminalProgram
+            sessions[index].terminalSessionID = event.terminalSessionID ?? sessions[index].terminalSessionID
+            sessions[index].terminalBundleID = event.terminalBundleID ?? sessions[index].terminalBundleID
+            sessions[index].tmuxPane = event.tmuxPane ?? sessions[index].tmuxPane
         } else {
             sessions.append(ClaudeSession(
                 id: event.sessionID,
@@ -160,7 +196,11 @@ final class SessionStore: ObservableObject {
                 state: mapped,
                 detail: detail,
                 lastUpdated: event.receivedAt,
-                transcriptPath: event.transcriptPath
+                transcriptPath: event.transcriptPath,
+                terminalProgram: event.terminalProgram,
+                terminalSessionID: event.terminalSessionID,
+                terminalBundleID: event.terminalBundleID,
+                tmuxPane: event.tmuxPane
             ))
         }
     }
