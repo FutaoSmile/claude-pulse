@@ -122,7 +122,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var timer: Timer?
     private var didLaunch = false
     private var layoutObserver: NSObjectProtocol?
-    private var capsuleClickObserver: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         launch()
@@ -140,13 +139,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ) { [weak self] _ in
             Task { @MainActor in self?.resizePanel() }
         }
-        capsuleClickObserver = NotificationCenter.default.addObserver(
-            forName: .ccLightCapsuleClicked,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in self?.store.isExpanded = true }
-        }
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.store.expireStaleSessions() }
         }
@@ -155,16 +147,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         server?.stop()
         if let layoutObserver { NotificationCenter.default.removeObserver(layoutObserver) }
-        if let capsuleClickObserver { NotificationCenter.default.removeObserver(capsuleClickObserver) }
     }
 
     private func startServer() {
         let server = SocketServer { [weak self] event in
             Task { @MainActor in
                 self?.store.consume(event)
-                if event.eventName == "PermissionRequest" || event.eventName == "Stop" || event.eventName == "Notification" {
-                    self?.store.isExpanded = true
-                }
                 self?.resizePanel()
             }
         }

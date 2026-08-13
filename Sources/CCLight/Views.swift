@@ -17,6 +17,7 @@ struct FloatingLightView: View {
     @ObservedObject var store: SessionStore
     @State private var pulse = false
     @State private var hovering = false
+    @State private var hoveringDisclosure = false
 
     var body: some View {
         Group {
@@ -37,42 +38,61 @@ struct FloatingLightView: View {
     }
 
     private var capsule: some View {
-        HStack(alignment: .center, spacing: 8) {
-            BrandIcon(size: 25)
+        HStack(alignment: .center, spacing: 0) {
+            HStack(alignment: .center, spacing: 8) {
+                BrandIcon(size: 25)
 
-            Circle()
-                .fill(store.dominantState.color)
-                .frame(width: 7, height: 7)
-                .scaleEffect(pulse && store.dominantState == .working ? 1.25 : 1)
-                .shadow(
-                    color: store.dominantState == .working
-                        ? store.dominantState.color.opacity(0.35)
-                        : .clear,
-                    radius: 3
-                )
+                Circle()
+                    .fill(store.dominantState.color)
+                    .frame(width: 7, height: 7)
+                    .scaleEffect(pulse && store.dominantState == .working ? 1.25 : 1)
+                    .shadow(
+                        color: store.dominantState == .working
+                            ? store.dominantState.color.opacity(0.35)
+                            : .clear,
+                        radius: 3
+                    )
 
-            Text(capsuleTitle)
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundStyle(Palette.ink)
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-                .contentTransition(.numericText())
+                Text(capsuleTitle)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Palette.ink)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .contentTransition(.numericText())
+            }
+            .padding(.leading, 10)
+            .padding(.trailing, 8)
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .overlay(WindowDragSurface())
+            .help("按住并拖动可移动位置")
+            .accessibilityLabel("Claude Pulse 状态，拖动可移动位置")
 
-            Image(systemName: "chevron.down")
-                .font(.system(size: 8, weight: .bold))
-                .foregroundStyle(Palette.honeyInk)
-                .frame(width: 22, height: 22)
-                .background(Palette.control.opacity(hovering ? 1 : 0.72), in: Circle())
+            Button {
+                store.isExpanded = true
+            } label: {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(Palette.honeyInk)
+                    .frame(width: 24, height: 24)
+                    .background(
+                        Palette.control.opacity(hoveringDisclosure ? 1 : 0.72),
+                        in: Circle()
+                    )
+            }
+            .buttonStyle(.plain)
+            .padding(.trailing, 8)
+            .contentShape(Rectangle())
+            .help("展开会话面板")
+            .accessibilityLabel("展开会话面板")
+            .onHover { value in
+                withAnimation(.easeOut(duration: 0.12)) { hoveringDisclosure = value }
+            }
         }
-        .padding(.leading, 10)
-        .padding(.trailing, 8)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         .background(hovering ? Palette.butter : Palette.cream, in: Capsule())
         .overlay(Capsule().stroke(Palette.border, lineWidth: hovering ? 1.2 : 0.8))
         .contentShape(Capsule())
-        .overlay(WindowDragSurface())
-        .help("点击展开；按住并拖动可移动位置")
-        .accessibilityLabel("Claude Pulse 状态；点击展开，拖动可移动")
         .onHover { value in
             withAnimation(.easeOut(duration: 0.14)) { hovering = value }
         }
@@ -396,7 +416,6 @@ private struct BrandIcon: View {
 
 extension Notification.Name {
     static let ccLightLayoutChanged = Notification.Name("app.cclight.layoutChanged")
-    static let ccLightCapsuleClicked = Notification.Name("app.cclight.capsuleClicked")
 }
 
 private func postLayoutChanged() {
@@ -411,14 +430,7 @@ private struct WindowDragSurface: NSViewRepresentable {
 private final class NativeWindowDragView: NSView {
     override var mouseDownCanMoveWindow: Bool { true }
     override func mouseDown(with event: NSEvent) {
-        guard let window else { return }
-        let startOrigin = window.frame.origin
-        window.performDrag(with: event)
-        let endOrigin = window.frame.origin
-        let moved = hypot(endOrigin.x - startOrigin.x, endOrigin.y - startOrigin.y)
-        if moved < 2 {
-            NotificationCenter.default.post(name: .ccLightCapsuleClicked, object: nil)
-        }
+        window?.performDrag(with: event)
     }
     override func hitTest(_ point: NSPoint) -> NSView? { self }
 }
