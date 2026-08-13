@@ -41,8 +41,8 @@ enum SessionState: String, Codable, CaseIterable {
     var color: Color {
         switch self {
         case .working: Color(red: 0.180, green: 0.514, blue: 0.980) // sky blue
-        case .waiting: Color(red: 0.875, green: 0.545, blue: 0.055) // honey amber
-        case .approval: Color(red: 0.937, green: 0.365, blue: 0.118) // warm orange
+        case .waiting: Color(red: 0.063, green: 0.596, blue: 0.451) // meadow teal
+        case .approval: Color(red: 0.918, green: 0.286, blue: 0.176) // coral orange
         case .error: Color(red: 0.875, green: 0.220, blue: 0.255) // coral red
         case .idle: Color(red: 0.420, green: 0.478, blue: 0.557) // blue gray
         }

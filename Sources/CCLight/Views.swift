@@ -2,15 +2,15 @@ import AppKit
 import SwiftUI
 
 private enum Palette {
-    static let ink = Color(red: 0.125, green: 0.169, blue: 0.239)
-    static let secondary = Color(red: 0.420, green: 0.478, blue: 0.557)
-    static let honey = Color(red: 0.875, green: 0.545, blue: 0.055)
-    static let honeyInk = Color(red: 0.545, green: 0.361, blue: 0.059)
-    static let border = Color(red: 0.918, green: 0.792, blue: 0.435)
-    static let divider = Color(red: 0.918, green: 0.859, blue: 0.690)
-    static let cream = Color(red: 1.000, green: 0.992, blue: 0.957)
-    static let butter = Color(red: 1.000, green: 0.973, blue: 0.882)
-    static let control = Color(red: 1.000, green: 0.949, blue: 0.788)
+    static let ink = Color(red: 0.090, green: 0.212, blue: 0.165)
+    static let secondary = Color(red: 0.337, green: 0.443, blue: 0.388)
+    static let brand = Color(red: 0.839, green: 0.337, blue: 0.231)
+    static let brandInk = Color(red: 0.173, green: 0.388, blue: 0.286)
+    static let border = Color(red: 0.714, green: 0.831, blue: 0.749)
+    static let divider = Color(red: 0.851, green: 0.910, blue: 0.867)
+    static let surface = Color(red: 0.988, green: 0.996, blue: 0.984)
+    static let surfaceTint = Color(red: 0.925, green: 0.969, blue: 0.933)
+    static let control = Color(red: 0.867, green: 0.941, blue: 0.886)
 }
 
 struct FloatingLightView: View {
@@ -69,7 +69,7 @@ struct FloatingLightView: View {
             } label: {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 8, weight: .bold))
-                    .foregroundStyle(Palette.honeyInk)
+                    .foregroundStyle(Palette.brandInk)
                     .frame(width: 24, height: 24)
                     .background(
                         Palette.control.opacity(hoveringDisclosure ? 1 : 0.72),
@@ -87,7 +87,7 @@ struct FloatingLightView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-        .background(hovering ? Palette.butter : Palette.cream, in: Capsule())
+        .background(hovering ? Palette.surfaceTint : Palette.surface, in: Capsule())
         .overlay(Capsule().stroke(Palette.border, lineWidth: hovering ? 1.2 : 0.8))
         .contentShape(Capsule())
         .onHover { value in
@@ -136,7 +136,7 @@ private struct SessionPanel: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
             LinearGradient(
-                colors: [Palette.cream, Palette.butter],
+                colors: [Palette.surface, Palette.surfaceTint],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -156,7 +156,7 @@ private struct SessionPanel: View {
                     Text("CLAUDE PULSE")
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                         .tracking(1.6)
-                        .foregroundStyle(Palette.honey)
+                        .foregroundStyle(Palette.brand)
                 }
                 Text(panelHeadline)
                     .font(.system(size: 18, weight: .bold, design: .rounded))
@@ -173,7 +173,7 @@ private struct SessionPanel: View {
                     .background(Palette.control, in: Circle())
             }
             .buttonStyle(.plain)
-            .foregroundStyle(Palette.honeyInk)
+            .foregroundStyle(Palette.brandInk)
             .help("查看状态说明")
             .accessibilityLabel("查看状态说明")
             .popover(isPresented: $showsLegend, arrowEdge: .top) {
@@ -201,7 +201,7 @@ private struct SessionPanel: View {
                 .background(Palette.control, in: Circle())
         }
         .buttonStyle(.plain)
-        .foregroundStyle(Palette.honeyInk)
+        .foregroundStyle(Palette.brandInk)
         .help(help)
         .accessibilityLabel(help)
     }
@@ -219,7 +219,7 @@ private struct EmptySessionsView: View {
         VStack(spacing: 10) {
             Image(systemName: "sparkles")
                 .font(.system(size: 25, weight: .light))
-                .foregroundStyle(Palette.honey)
+                .foregroundStyle(Palette.brand)
             Text("Claude Code 下次有活动时\n会自动显示在这里")
                 .font(.system(size: 13, weight: .medium, design: .rounded))
                 .multilineTextAlignment(.center)
@@ -272,7 +272,7 @@ private struct SessionRow: View {
                         .background(Palette.control, in: Circle())
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(Palette.honeyInk)
+                .foregroundStyle(Palette.brandInk)
                 .help("从面板隐藏此会话（不会结束 Claude Code；有新活动时会再次出现）")
                 .accessibilityLabel("从面板隐藏会话，不结束 Claude Code")
                 .transition(.opacity.combined(with: .scale))
@@ -334,7 +334,7 @@ private struct StatusLegend: View {
             }
         }
         .padding(16)
-        .background(Palette.cream)
+        .background(Palette.surface)
     }
 }
 
