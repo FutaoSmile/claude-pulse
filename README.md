@@ -47,6 +47,7 @@ chmod +x scripts/install-hooks.sh scripts/uninstall-hooks.sh
 2. 安装应用到 `/Applications/Claude Pulse.app`。
 3. 安装 Hook 桥接命令到 `~/.local/bin/cc-light`。
 4. 以非破坏方式将所需 Hooks 合并到 `~/.claude/settings.json`。
+5. 应用运行时会定期检查 Hooks；如果其他配置工具覆盖了该文件，Claude Pulse 会自动把缺失项合并回来。
 5. 启动 Claude Pulse。
 
 重新安装或修复 Hooks 后，请重新启动已打开的 Claude Code 会话。之后的会话会在触发 Hook 时自动出现。

@@ -4,6 +4,8 @@ set -euo pipefail
 HOOK_BIN="$HOME/.local/bin/cc-light"
 SETTINGS_FILE="$HOME/.claude/settings.json"
 
+pkill -f '/Claude Pulse.app/Contents/MacOS/cc-light' 2>/dev/null || true
+
 /usr/bin/python3 - "$SETTINGS_FILE" "$HOOK_BIN" <<'PY'
 import json
 import os

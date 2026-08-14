@@ -133,6 +133,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var panel: NSPanel?
     private var timer: Timer?
     private var titleRefreshTimer: Timer?
+    private var hookRepairTimer: Timer?
     private var didLaunch = false
     private var expansionObserver: NSObjectProtocol?
     private var preferredToggleAnchor: NSPoint?
@@ -147,6 +148,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         didLaunch = true
         createPanel()
         startServer()
+        repairHooksIfNeeded()
         expansionObserver = NotificationCenter.default.addObserver(
             forName: .ccLightExpansionRequested,
             object: nil,
@@ -161,12 +163,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         titleRefreshTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refreshAllConversationTitles() }
         }
+        hookRepairTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.repairHooksIfNeeded() }
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         server?.stop()
         timer?.invalidate()
         titleRefreshTimer?.invalidate()
+        hookRepairTimer?.invalidate()
         if let expansionObserver { NotificationCenter.default.removeObserver(expansionObserver) }
     }
 
@@ -187,6 +193,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             alert.informativeText = "本地事件通道创建失败：\(error.localizedDescription)"
             alert.runModal()
             NSApplication.shared.terminate(nil)
+        }
+    }
+
+    private func repairHooksIfNeeded() {
+        do {
+            if try HookInstaller.repairIfNeeded() {
+                NSLog("Claude Pulse restored its Claude Code Hooks")
+            }
+        } catch {
+            NSLog("Claude Pulse could not repair its Hooks: \(error.localizedDescription)")
         }
     }
 
